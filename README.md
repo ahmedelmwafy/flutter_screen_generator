@@ -37,11 +37,13 @@ Run the command with `flutter_screen_generator` as the executable name
 ## 🚀 Example
 
 ```bash
-dart run flutter_screen_generator:flutter_screen_generator settings
+dart run flutter_screen_generator:flutter_screen_generator settings 
 ```
 
 ---
 
-
 <img width="777" alt="Screenshot 2025-04-29 at 2 10 36 PM" src="https://github.com/user-attachments/assets/ffeb66ac-fb0d-43e6-bf72-e79c012499ba" />
+
+
+---
 
