@@ -1,14 +1,42 @@
 import 'dart:io';
 import 'captilize.dart';
 import 'package:path/path.dart' as path;
-import 'flutter_screen_generator.dart';
 import 'prompt_for_dio_methods.dart';
 
 Future<void> generateScreens(List<String> screenNames) async {
     print('\n--- Generating Screens ---');
+
+    // --- Automatically determine projectRoot and packageName ---
+    String? projectRoot = Directory.current.path;
+    String? packageName;
+
+    try {
+        final pubspecFile = File(path.join(projectRoot, 'pubspec.yaml'));
+        if (await pubspecFile.exists()) {
+            final lines = await pubspecFile.readAsLines();
+            for (var line in lines) {
+                if (line.trim().startsWith('name:')) {
+                    packageName = line.split(':')[1].trim();
+                    break;
+                }
+            }
+        }
+    } catch (e) {
+        print('❌ Error reading pubspec.yaml: $e');
+    }
+
+    if (packageName == null) {
+        print('Error: Could not determine project root or package name. Make sure you are running this script from the project root directory.');
+        return; // Exit if essential variables are not set
+    }
+    print('✅ Determined project root: $projectRoot');
+    print('✅ Determined package name: $packageName');
+    // --- End of automatic determination ---
+
+
     for (var folderName in screenNames) {
       // Construct the target folder path relative to the project root
-      final folderPath = path.join(projectRoot!, 'lib', 'screens', folderName);
+      final folderPath = path.join(projectRoot, 'lib', 'screens', folderName);
       final cubitName = '${capitalize(folderName)}Cubit';
       final stateName = '${capitalize(folderName)}State';
       final viewName = capitalize(folderName);
@@ -19,6 +47,7 @@ Future<void> generateScreens(List<String> screenNames) async {
 import 'package:flutter_bloc/flutter_bloc.dart';
 // Use the determined package name for imports
 import 'package:$packageName/screens/$folderName/state.dart';
+import 'package:myapp/helpers/dio.dart'; // This import is needed in the cubit file where the methods are generated
 
 class $cubitName extends Cubit<$stateName> {
   $cubitName() : super(${capitalize(folderName)}Initial());
@@ -80,7 +109,7 @@ class $viewName extends StatelessWidget {
                     child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          
+
                         ],
                     ),
                  ),
@@ -99,20 +128,21 @@ class $viewName extends StatelessWidget {
         // Use .replaceFirst to insert the package name
         await File(path.join(folderPath, 'cubit.dart')).writeAsString(
             cubitFile.replaceFirst(
-                'package:\$packageName', 'package:${packageName!}'));
+                'package:$packageName', 'package:${packageName}'));
         await File(path.join(folderPath, 'state.dart')).writeAsString(
             stateFile.replaceFirst(
-                'package:\$packageName', 'package:${packageName!}'));
+                'package:$packageName', 'package:${packageName}'));
         await File(path.join(folderPath, 'view.dart')).writeAsString(
             viewFile.replaceFirst(
-                'package:\$packageName', 'package:${packageName!}'));
+                'package:$packageName', 'package:${packageName}'));
         print('✅ Created screen: $folderName at $folderPath');
 
         // --- Prompt for Dio methods for this specific screen ---
-        await promptForDioMethods(folderPath, viewName, cubitName, stateName);
+        // Pass the determined packageName to promptForDioMethods
+        await promptForDioMethods(folderPath, viewName, cubitName, stateName, packageName);
         // ----------------------------------------------------
       } catch (e) {
         print('❌ Error creating screen $folderName: $e');
       }
     } // end of screenNames loop
-  } // end of _generateScreens
+  } // end

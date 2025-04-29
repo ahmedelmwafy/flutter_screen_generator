@@ -1,57 +1,40 @@
 import 'dart:io';
-import 'flutter_screen_generator.dart';
 import 'generate_dio_method.dart';
-import 'add_import_string.dart';
 import 'package:path/path.dart' as path;
 
+// --- Revised promptForDioMethods function ---
+// Prompts the user for API methods and updates the state and cubit files accordingly.
 Future<void> promptForDioMethods(String folderPath, String screenName,
-      String cubitName, String stateName) async {
-    // Get user confirmation first
+    String cubitName, String stateName, String packageName) async {
+  // Added packageName parameter
+  print('\n--- Prompting for Dio Methods for $screenName ---');
+  final cubitFilePath = path.join(folderPath, 'cubit.dart');
+  final stateFilePath = path.join(folderPath, 'state.dart');
+
+  List<Map<String, String>> apiCalls = [];
+
+  // Loop to ask the user if they want to add API methods
+  while (true) {
     stdout.write(
-        '\n❓ Do you want to add Dio methods (e.g., fetch${screenName}Data) to the $cubitName? (y/n): ');
-    String? response = stdin.readLineSync()?.trim().toLowerCase();
-
-    if (response != 'y' && response != 'yes') {
-      print('⏩ Skipping Dio method generation for $screenName.');
-      return; // Skip if user says no
+        'Add a Dio method for $screenName? (yes/no) write "y" or "n" '); // Updated prompt
+    String addMethod = stdin.readLineSync()?.toLowerCase() ?? 'n';
+    if (addMethod != 'yes' && addMethod != 'y') {
+      // Check for 'yes' or 'y'
+      break; // Exit loop if user doesn't want to add more methods
     }
 
-    print('--- Adding Dio methods for $screenName Cubit ---');
+    // Prompt for HTTP method using numbered options
+    String methodType = '';
+    while (methodType.isEmpty) {
+      stdout.write('Select HTTP method:\n');
+      stdout.write('1. GET\n');
+      stdout.write('2. POST\n');
+      stdout.write('3. PUT\n');
+      stdout.write('4. DELETE\n');
+      stdout.write('Enter number: ');
+      String? choice = stdin.readLineSync();
 
-    final cubitFilePath = path.join(folderPath, 'cubit.dart');
-    var cubitContent = await File(cubitFilePath).readAsString();
-    bool cubitModified = false; // Track if cubit file was changed
-
-    // Add DioHelper import if not already present
-    final dioImportString = "import 'package:$packageName/helpers/dio.dart';";
-    if (!cubitContent.contains(dioImportString)) {
-      cubitContent = addImportString(cubitContent, dioImportString);
-      cubitModified = true;
-      print('➕ Added DioHelper import to cubit.');
-    } else {
-      print('✅ DioHelper import already exists in cubit.');
-    }
-
-    while (true) {
-      print('\nChoose method type to add:');
-      print('1: GET (fetch data)');
-      print('2: POST (send data)');
-      print('3: PUT (update data)');
-      print('4: DELETE (delete data)');
-      print('n: Finish adding methods');
-      stdout.write(
-          'Enter choice (1-4 or n): '); // Use stdout.write for inline prompt
-
-      String? methodChoice = stdin.readLineSync()?.trim().toLowerCase();
-
-      if (methodChoice == 'n') {
-        // Only 'n' to finish, 'finish' is less likely
-        print('👍 Finished adding methods for $screenName.');
-        break; // Exit the loop
-      }
-
-      String? methodType;
-      switch (methodChoice) {
+      switch (choice) {
         case '1':
           methodType = 'GET';
           break;
@@ -65,50 +48,130 @@ Future<void> promptForDioMethods(String folderPath, String screenName,
           methodType = 'DELETE';
           break;
         default:
-          print('❌ Invalid choice. Please enter 1, 2, 3, 4, or n.');
-          continue; // Ask again
+          print('Invalid choice. Please enter 1, 2, 3, or 4.');
+      }
+    }
+
+    // Prompt for API path segment
+    // Prompt for API path segment
+    stdout.write('Enter path segment (e.g., /users/login): ');
+    String pathSegment = stdin.readLineSync()?.trim() ?? ''; // Trim whitespace
+    if (pathSegment.isEmpty) {
+      print('Path segment cannot be empty.');
+      continue; // Ask again for the same method
+    }
+    // Ensure path starts with '/'
+    if (!pathSegment.startsWith('/')) {
+      pathSegment = '/$pathSegment';
+    }
+
+    // Prompt for desired function name
+    stdout.write('Enter desired function name (e.g., loginUser): ');
+    String functionName = stdin.readLineSync()?.trim() ?? ''; // Trim whitespace
+    if (functionName.isEmpty) {
+      print('Function name cannot be empty.');
+      continue; // Ask again for the same method
+    }
+    // Basic validation for function name: starts with lowercase, contains only letters and numbers
+    if (!RegExp(r'^[a-z][a-zA-Z0-9]*$').hasMatch(functionName)) {
+      print(
+          'Invalid function name. Must start with a lowercase letter and contain only letters and numbers.');
+      continue; // Ask again for the same method
+    }
+
+    // --- Confirmation Step ---
+    print('\n--- Confirm API Call Details ---');
+    print('Method: $methodType');
+    print('Path: $pathSegment');
+    print('Function Name: $functionName');
+    stdout.write('Confirm details? (y/n): '); // Updated confirmation prompt
+    String? confirmInput = stdin.readLineSync();
+    String confirm = confirmInput?.trim().toLowerCase() ?? 'n';
+
+    if (confirm == 'y') {
+      // Check only for 'y'
+      // Store the collected API call details
+      apiCalls.add({
+        'method': methodType,
+        'path': pathSegment,
+        'functionName': functionName,
+      });
+      print('✅ API call details confirmed.');
+    } else {
+      print('❌ API call details not confirmed. Starting over for this method.');
+      continue; // Ask again for the same method details
+    }
+    // --- End Confirmation Step ---
+  }
+
+  // --- Update State File with Specific States ---
+  if (apiCalls.isNotEmpty) {
+    try {
+      // Read the current content of the state file
+      String currentStateContent = await File(stateFilePath).readAsString();
+      String stateContentToAdd = '\n// --- Specific states for API calls ---';
+
+      // Generate specific states for each collected function name
+      for (var call in apiCalls) {
+        String functionName = call['functionName']!;
+        String capitalizedFunctionName = capitalize(functionName);
+        stateContentToAdd += '''
+
+
+class ${capitalizedFunctionName}Loading extends $stateName {}
+class ${capitalizedFunctionName}Success extends $stateName {}
+class ${capitalizedFunctionName}Error extends $stateName {}
+''';
+      }
+      // Append the generated states to the state file
+      await File(stateFilePath)
+          .writeAsString(currentStateContent + stateContentToAdd);
+      print('✅ Added specific states to $stateFilePath');
+    } catch (e) {
+      print('❌ Error updating state file $stateFilePath: $e');
+    }
+
+    // --- Update Cubit File with Dio Methods ---
+    try {
+      // Read the current content of the cubit file
+      String currentCubitContent = await File(cubitFilePath).readAsString();
+      String cubitContentToAdd = '\n// --- API Methods ---';
+
+      // Generate the Dio method code for each collected API call
+      for (var call in apiCalls) {
+        String methodType = call['method']!;
+        String pathSegment = call['path']!;
+        String functionName = call['functionName']!;
+
+        cubitContentToAdd += generateDioMethodCode(
+          methodType,
+          pathSegment,
+          screenName, // screenName is still useful for base state name if needed
+          functionName, // Pass the user-provided function name
+          packageName, // Pass the packageName
+        );
       }
 
-      stdout.write(
-          'Enter the URL path segment for the $methodType request (e.g., "users/profile"): ');
-      String? pathSegment = stdin.readLineSync()?.trim();
-
-      if (pathSegment == null || pathSegment.isEmpty) {
-        print('❌ URL path segment cannot be empty.');
-        continue; // Ask again
-      }
-
-      // Generate the method code using .then().catchError().whenComplete()
-      final generatedMethodCode = generateDioMethodCode(
-          methodType, pathSegment, screenName, stateName);
-
-      // Find insertion point (just before the last closing brace of the class)
-      final lastBraceIndex = cubitContent.lastIndexOf('}');
+      // Find the last closing brace '}' of the Cubit class to insert methods before it
+      // This assumes a standard Cubit file structure. More complex files might need parsing.
+      int lastBraceIndex = currentCubitContent.lastIndexOf('}');
       if (lastBraceIndex != -1) {
-        // Insert the new method code before the last brace, ensuring basic indentation
-        final insertionPoint = lastBraceIndex;
-        // Add a blank line before the new method for separation
-        cubitContent = cubitContent.substring(0, insertionPoint) +
-            '\n' + // Add a newline before the method
-            generatedMethodCode +
-            cubitContent.substring(insertionPoint);
-        cubitModified = true;
-        print(
-            '✅ Added $methodType method \'_generateDioMethodCode\' for /$pathSegment to $cubitName.'); // Report the generated function name base
+        // Insert the generated methods before the last brace
+        String updatedCubitContent =
+            currentCubitContent.substring(0, lastBraceIndex) +
+                cubitContentToAdd +
+                '\n}'; // Add the closing brace back
+        // Write the updated content back to the cubit file
+        await File(cubitFilePath).writeAsString(updatedCubitContent);
+        print('✅ Added Dio methods to $cubitFilePath');
       } else {
         print(
-            '❌ Could not find closing brace for class $cubitName. Cannot add method automatically.');
-        print('   You may need to manually add the method code.');
-        // Optionally print the code to console for manual copy-paste
-        // print('\n--- Generated Code ---');
-        // print(generatedMethodCode);
-        // print('----------------------\n');
+            '❌ Could not find the end of the Cubit class in $cubitFilePath. Could not add methods.');
       }
-    } // end while loop
-
-    // Write the modified cubit file if changes were made
-    if (cubitModified) {
-      await File(cubitFilePath).writeAsString(cubitContent);
-      print('✅ $cubitName file updated with added methods.');
+    } catch (e) {
+      print('❌ Error updating cubit file $cubitFilePath: $e');
     }
-  } // end of _promptForDioMethods
+  } else {
+    print('No Dio methods added for $screenName.');
+  }
+}

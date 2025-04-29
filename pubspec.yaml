@@ -1,6 +1,6 @@
 name: flutter_screen_generator
 description: A simple flutter screen generator package.
-version: 0.0.1
+version: 0.0.4
 homepage: https://github.com/ahmedelmwafy/flutter_screen_generator
 
 environment:
