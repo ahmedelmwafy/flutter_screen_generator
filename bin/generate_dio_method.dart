@@ -131,7 +131,7 @@ Future<void> promptForDioMethods(String folderPath, String screenName, String cu
 
   // Loop to ask the user if they want to add API methods
   while (true) {
-    stdout.write('Add a Dio method for $screenName? (yes/no/y/n): '); // Updated prompt
+    stdout.write('Add a Dio method for $screenName? (yes/no): for yes write "y" or "n" '); // Updated prompt
     String addMethod = stdin.readLineSync()?.toLowerCase() ?? 'n';
     if (addMethod != 'yes' && addMethod != 'y') { // Check for 'yes' or 'y'
       break; // Exit loop if user doesn't want to add more methods
@@ -320,7 +320,7 @@ Future<void> generateScreens(List<String> screenNames) async {
 import 'package:flutter_bloc/flutter_bloc.dart';
 // Use the determined package name for imports
 import 'package:\$packageName/screens/\$folderName/state.dart';
-import 'package:myapp/helpers/dio.dart'; // Added the requested import here
+import 'package:\$packageName/helpers/dio.dart'; // Added the requested import here
 
 class \$cubitName extends Cubit<\$stateName> {
   \$cubitName() : super(${capitalize(folderName)}Initial());

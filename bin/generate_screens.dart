@@ -47,7 +47,7 @@ Future<void> generateScreens(List<String> screenNames) async {
 import 'package:flutter_bloc/flutter_bloc.dart';
 // Use the determined package name for imports
 import 'package:$packageName/screens/$folderName/state.dart';
-import 'package:myapp/helpers/dio.dart'; // This import is needed in the cubit file where the methods are generated
+import 'package:$packageName/helpers/dio.dart'; // This import is needed in the cubit file where the methods are generated
 
 class $cubitName extends Cubit<$stateName> {
   $cubitName() : super(${capitalize(folderName)}Initial());
